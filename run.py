@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-自动读取 OneDrive Excel → 生成 data.js → 打开看板
+自动读取默认 Excel 路径 → 生成 data.js → 打开看板
 """
 import json
+import tempfile
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -13,11 +14,9 @@ BASE_DIR = Path(__file__).parent
 DATA_JS = BASE_DIR / "data.js"
 DASHBOARD = BASE_DIR / "dashboard.html"
 
-# OneDrive 源文件路径
+# Excel 源文件路径（Windows）
 SRC = Path(
-    "/Users/wangwei/Library/CloudStorage/OneDrive-Emerson/"
-    "00 General - TM-CSC Calibration team/"
-    "01 BorrowList&Standards list 2026.xlsx"
+    r"C:\Users\wwang\OneDrive - Emerson\00 General - TM-CSC Calibration team\01 BorrowList&Standards list 2026.xlsx"
 )
 
 
@@ -35,14 +34,74 @@ def safe_value(val):
     return val
 
 
+def refresh_excel_file(path: Path) -> Path:
+    """用本机 Excel 打开并刷新工作簿，返回可安全读取的文件快照路径。"""
+    try:
+        import win32com.client  # type: ignore
+    except Exception as exc:
+        print(f"⚠️ 无法使用 Excel 自动刷新（未安装 pywin32 或环境不支持）：{exc}")
+        return path
+
+    excel = None
+    workbook = None
+    temp_path = None
+    try:
+        excel = win32com.client.DispatchEx("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        excel.EnableEvents = False
+        try:
+            excel.AskToUpdateLinks = False
+        except Exception:
+            pass
+
+        workbook = excel.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+        try:
+            workbook.RefreshAll()
+        except Exception:
+            pass
+        try:
+            excel.CalculateUntilAsyncQueriesDone()
+        except Exception:
+            pass
+        with tempfile.NamedTemporaryFile(delete=False, suffix=path.suffix) as tmp:
+            temp_path = Path(tmp.name)
+        try:
+            workbook.SaveCopyAs(str(temp_path))
+            return temp_path
+        except Exception as exc:
+            print(f"⚠️ Excel 已刷新，但生成快照失败，改为直接读取原文件：{exc}")
+            if temp_path is not None and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+            return path
+    except Exception as exc:
+        print(f"⚠️ Excel 刷新失败，继续读取本地文件：{exc}")
+        return path
+    finally:
+        if workbook is not None:
+            try:
+                workbook.Close(SaveChanges=False)
+            except Exception:
+                pass
+        if excel is not None:
+            try:
+                excel.Quit()
+            except Exception:
+                pass
+
+
 def main():
     if not SRC.exists():
         print(f"❌ 数据源不存在: {SRC}")
-        print("   请确认 OneDrive 已同步，或手动上传 Excel 到看板中。")
+        print("   请确认 Windows 端 OneDrive 已同步。")
         return
 
+    snapshot = refresh_excel_file(SRC)
     print(f"📂 读取: {SRC.name}")
-    xl = pd.ExcelFile(SRC)
+    xl = pd.ExcelFile(snapshot)
 
     # 1. Standards List
     standards = []
@@ -94,6 +153,12 @@ def main():
     # 4. 打开看板
     webbrowser.open(DASHBOARD.as_uri())
     print(f"🌐 已打开: {DASHBOARD.name}")
+
+    if snapshot != SRC:
+        try:
+            snapshot.unlink()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

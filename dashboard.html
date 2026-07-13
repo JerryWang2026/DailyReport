@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>校准管理仪表盘</title>
 
-<!-- SheetJS：用于上传/读取本地 Excel 文件 -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- ECharts：用于状态分布、到期时间线等可视化图表 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
@@ -31,6 +29,7 @@
   --yellow:#ffcc00; --yellow-soft:#fff8e1;
   --blue:#007aff;   --blue-soft:#eaf3ff;
   --green:#34c759;  --green-soft:#eafaf0;
+  --green-2:#2fb36b; --green-2-soft:#e7f7ef;
   --purple:#af52de; --purple-soft:#f6ecfb;
   --gray:#8e8e93;   --gray-soft:#f2f2f5;
 }
@@ -57,8 +56,6 @@ html,body{background:var(--bg);color:var(--text);
 .btn-ghost:hover{background:#e6e6ea}
 .btn-soft{background:var(--blue-soft);color:var(--blue)}
 .btn-soft:hover{background:#dcebff}
-.file-label{position:relative;overflow:hidden}
-.file-label input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 
 .refresh-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
 .refresh-dot.loading{background:var(--orange);animation:pulse 1s infinite}
@@ -128,6 +125,7 @@ tbody tr:hover{background:var(--card-sub)}
 .tag.blue{background:var(--blue-soft);color:var(--blue)}
 .tag.purple{background:var(--purple-soft);color:var(--purple)}
 .tag.green{background:var(--green-soft);color:var(--green)}
+.tag.green-2{background:var(--green-2-soft);color:var(--green-2)}
 .tag.gray{background:var(--gray-soft);color:var(--gray)}
 .tag.red{background:#ffe3e1;color:var(--red)}
 .tag.orange{background:#ffe9cc;color:var(--orange)}
@@ -163,9 +161,6 @@ tbody tr:hover{background:var(--card-sub)}
     <div class="actions">
       <span class="refresh-dot" id="refreshDot" title="数据状态"></span>
       <span class="kpi-note" id="srcInfo"></span>
-      <label class="btn btn-ghost file-label">📁 加载 Excel
-        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="onFile(this)">
-      </label>
       <button class="btn btn-soft" onclick="buildAll()">↻ 刷新</button>
     </div>
   </div>
@@ -535,8 +530,8 @@ function renderOversea(){
   const rows=getOverseaView();
   const head=OS_COLS.map(c=>`<th>${c[1]}</th>`).join('');
   const body=rows.map(d=>{
-    let st = d.status==='sent'?'<span class="tag purple">已送出</span>'
-          : d.status==='returned'?'<span class="tag green">已返回</span>'
+        let st = d.status==='sent'?'<span class="tag purple">已送出</span>'
+          : d.status==='returned'?'<span class="tag green-2">已返回</span>'
           : d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN?'<span class="tag orange">⏰预警</span>'
           : '<span class="tag gray">待安排</span>';
     return `<tr>
@@ -566,7 +561,7 @@ const ALL_COLS=[['sn','SN'],['model','型号'],['manufacture','厂商'],['descri
 function statusTag(d){
   if(d.status==='expired') return '<span class="tag red">已过期</span>';
   if(d.status==='sent') return '<span class="tag blue">已送检</span>';
-  if(d.status==='returned') return '<span class="tag green">已返回</span>';
+  if(d.status==='returned') return '<span class="tag green-2">已返回</span>';
   if(d.remainDue!=null && d.remainDue<=CONFIG.DOMESTIC_WARN && !d.isOversea) return '<span class="tag green">待送出</span>';
   if(d.isOversea && d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN) return '<span class="tag orange">海外预警</span>';
   return '<span class="tag green">正常</span>';
@@ -595,7 +590,7 @@ function renderCharts(devs){
   const monKeys=Object.keys(dueMon).sort();
 
   drawPie('chartStatus', '设备状态分布',
-    [['已过期',statusCnt.expired,C.red],['已送检',statusCnt.sent,C.blue],['待送出',statusCnt.pending,C.green],['已返回',statusCnt.returned,C.green]]);
+    [['已过期',statusCnt.expired,C.red],['已送检',statusCnt.sent,C.blue],['待送出',statusCnt.pending,C.green],['已返回',statusCnt.returned,C.green2]]);
   drawPie('chartScope', '境内 / 海外',
     [['国内',dom,C.blue],['海外',os,C.purple]]);
   const el=document.getElementById('chartDue');
@@ -635,38 +630,6 @@ function exportCSV(rows,prefix){
   const blob=new Blob(['\ufeff'+head+'\n'+body],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=`${prefix}_${fmt(TODAY)}.csv`; a.click();
-}
-
-/* ---------- Excel 上传 ---------- */
-function onFile(input){
-  const f=input.files[0]; if(!f) return;
-  document.getElementById('refreshDot').classList.add('loading');
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const out=parseWorkbook(wb, f.name);
-      RAW=out; buildAll();
-    }catch(err){ alert('解析失败：'+err.message); document.getElementById('refreshDot').classList.remove('loading'); }
-  };
-  reader.readAsBinaryString(f);
-}
-function mapRow(row){
-  const c=CONFIG.COL; const get=k=>row[c[k]];
-  return {id:get('id'),sn:get('sn'),model:get('model'),manufacture:get('manufacture'),
-    description:get('description'),calDate:get('calDate'),due:get('due'),sendDate:get('sendDate'),
-    oversea:get('oversea'),type:get('type'),matStatus:get('matStatus'),active:get('active')};
-}
-function parseWorkbook(wb, fname){
-  const main=wb.Sheets[CONFIG.SHEET_MAIN];
-  const arr=main? XLSX.utils.sheet_to_json(main,{defval:null}) : [];
-  const standards=arr.map(mapRow);
-  let overseas=[];
-  if(wb.Sheets[CONFIG.SHEET_OVERSEA]){
-    // 海外表字段不固定，原样保留便于展示
-    overseas=XLSX.utils.sheet_to_json(wb.Sheets[CONFIG.SHEET_OVERSEA],{defval:null});
-  }
-  return {generatedAt:fmt(new Date()), source:fname+`（已上传）`, standards, overseas};
 }
 
 /* ---------- 初始化：自动加载 data.js，否则使用内置示例数据 ---------- */
