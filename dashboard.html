@@ -161,7 +161,7 @@ tbody tr:hover{background:var(--card-sub)}
     <div class="actions">
       <span class="refresh-dot" id="refreshDot" title="数据状态"></span>
       <span class="kpi-note" id="srcInfo"></span>
-      <button class="btn btn-soft" onclick="buildAll()">↻ 刷新</button>
+      <button class="btn btn-soft" onclick="refreshData()">↻ 刷新</button>
     </div>
   </div>
 
@@ -284,6 +284,7 @@ const EMBEDDED_DATA = {"generatedAt": "2026-07-13", "source": "01 BorrowList&Sta
 let RAW = null;        // {generatedAt, source, standards:[], overseas:[]}
 let TODAY = new Date();
 let charts = {};
+let LAST_REFRESH_AT = null;
 
 /* ===================== 日期工具 ===================== */
 // 解析日期：兼容 "2026-07-10"、"2026-07-10 14:30:00"、"10-Jul-26"、"7/10/2026" 等
@@ -364,9 +365,26 @@ function tryFmt(s,f){
   }catch(e){return null;}
 }
 function fmt(d){ return d? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '—'; }
+function fmtClock(d){ return d? `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}` : '—'; }
 function days(a,b){ return Math.round((stripTime(b)-stripTime(a))/86400000); }
 function stripTime(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
 function isActive(dev){ return dev.active && String(dev.active).trim().toLowerCase()==='active'; }
+function isFluke57xx(dev){
+  const maker = String(dev.manufacture||'').trim().toLowerCase();
+  const model = String(dev.model||'').trim().toUpperCase();
+  return maker==='fluke' && /^57\d{2}[A-Z]?$/.test(model);
+}
+function parseExternalDueFromComments(comments){
+  const s = String(comments||'');
+  const explicit = s.match(/EXT_DUE\s*=\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+  if(explicit) return parseDate(explicit[1]);
+
+  const nextCal = s.match(/next\s+cal\s+dat[ea]\s*[:=]?\s*([0-9]{1,2}-[A-Za-z]{3}-[0-9]{2,4}|[0-9]{4}[\/-][0-9]{1,2}[\/-][0-9]{1,2}|[0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/i);
+  if(nextCal) return parseDate(nextCal[1]);
+
+  const anyDate = s.match(/([0-9]{1,2}-[A-Za-z]{3}-[0-9]{2,4}|[0-9]{4}[\/-][0-9]{1,2}[\/-][0-9]{1,2}|[0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/i);
+  return anyDate ? parseDate(anyDate[1]) : null;
+}
 
 /* ===================== 设备计算（核心逻辑） ===================== */
 function compute(dev){
@@ -376,6 +394,9 @@ function compute(dev){
   const isSent = !!send;
   const isOversea = !!(dev.oversea && String(dev.oversea).trim()!=='');
   const duePast = due && due < stripTime(TODAY);
+  const is57xx = isFluke57xx(dev);
+  const externalDue = is57xx ? parseExternalDueFromComments(dev.comments) : null;
+  const externalDuePast = externalDue && externalDue < stripTime(TODAY);
 
   let status, daysN, sortKey;
   if(!isSent && duePast){            // 已过期未送出
@@ -392,9 +413,10 @@ function compute(dev){
     status='pending'; daysN=due?days(TODAY,due):null; sortKey=2;
   }
   const remainDue = (due && !duePast)? days(TODAY,due) : null;
+  const externalRemain = (externalDue && !externalDuePast)? days(TODAY,externalDue) : null;
   // 逾期天数：已送检/已过期 且 仍未返回（今天 − 到期日，正数）
   const overdueDays = (due && duePast)? days(due,TODAY) : null;
-  return {...dev, due, send, calDate, isSent, isOversea, duePast, status, daysN, remainDue, overdueDays, sortKey};
+  return {...dev, due, send, calDate, isSent, isOversea, duePast, status, daysN, remainDue, overdueDays, sortKey, is57xx, externalDue, externalRemain};
 }
 
 /* ===================== 主构建 ===================== */
@@ -410,7 +432,7 @@ function buildAll(){
   document.getElementById('srcSub').textContent =
     RAW.source? `数据源：${RAW.source}` : '（内置示例数据）';
   document.getElementById('srcInfo').textContent =
-    `更新于 ${RAW.generatedAt||'—'}`;
+    `数据更新于 ${RAW.generatedAt||'—'} · 页面刷新于 ${fmtClock(LAST_REFRESH_AT||TODAY)}`;
 
   renderCards(devices);
   renderAlerts(devices);
@@ -419,6 +441,24 @@ function buildAll(){
   renderAll();
   renderCharts(devices);
   document.getElementById('refreshDot').classList.remove('loading');
+}
+function refreshData(){
+  const dot = document.getElementById('refreshDot');
+  if(dot) dot.classList.add('loading');
+  LAST_REFRESH_AT = new Date();
+
+  const script = document.createElement('script');
+  script.src = `data.js?t=${Date.now()}`;
+  script.onload = ()=>{
+    RAW = (typeof __AUTO_DATA__ !== 'undefined') ? __AUTO_DATA__ : RAW;
+    LAST_REFRESH_AT = new Date();
+    buildAll();
+  };
+  script.onerror = ()=>{
+    if(dot) dot.classList.remove('loading');
+    alert('刷新失败：未能重新读取 data.js');
+  };
+  document.head.appendChild(script);
 }
 
 /* ---------- 1. 总览卡片 ---------- */
@@ -454,11 +494,12 @@ function alertRow(d,level,msg){
   const dayTxt = d.status==='expired'
       ? `逾期 ${Math.abs(d.daysN)} 天`
       : `剩 ${d.daysN} 天`;
+  const extTxt = d.externalDue ? ` · 外送 Due ${fmt(d.externalDue)}` : '';
   return `<div class="alert-row">
     <span class="dot ${dot}"></span>
     <div class="info">
-      <div class="t">${esc(d.model||d.description||d.sn||'—')} <span style="color:var(--text-3);font-weight:400">· ${esc(d.sn||'')}</span></div>
-      <div class="s">${msg} · Due ${fmt(d.due)}</div>
+      <div class="t">${esc(d.model||d.description||d.sn||'—')} <span style="color:var(--text-3);font-weight:400">· ID ${esc(d.id||'—')} · SN ${esc(d.sn||'—')}</span></div>
+      <div class="s">${msg} · Due ${fmt(d.due)}${extTxt}</div>
     </div>
     <div class="days ${dcls}">${dayTxt}</div>
   </div>`;
@@ -496,18 +537,18 @@ function getSentView(){
     .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${fmt(d.send)}`.toLowerCase().includes(q))
     .sort((a,b)=>a.daysN-b.daysN);
 }
-const SENT_COLS=[['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],
+const SENT_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['externalDue','外送Due'],
   ['sendDate','送出日期'],['daysN','送检天数'],['due','到期日'],['overdueDays','逾期天数'],['scope','类型']];
 function renderSent(){
   const rows=getSentView();
   const head=SENT_COLS.map(c=>`<th>${c[1]}</th>`).join('');
   const body=rows.map(d=>`<tr>
-    <td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
-    <td>${esc(d.description||'—')}</td><td>${fmt(d.send)}</td>
+    <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
+    <td>${esc(d.description||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.send)}</td>
     <td><b>${d.daysN}</b> 天</td><td>${fmt(d.due)}</td>
     <td>${d.overdueDays!=null?`<span style="color:#e5484d;font-weight:600">逾期 ${d.overdueDays} 天</span>`:'—'}</td>
     <td>${d.isOversea?'<span class="tag purple">海外</span>':'<span class="tag blue">国内</span>'}</td>
-  </tr>`).join('') || '<tr><td colspan="9" class="empty">无数据</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="11" class="empty">无数据</td></tr>';
   document.getElementById('sentTbl').querySelector('thead').innerHTML=`<tr>${head}</tr>`;
   document.getElementById('sentTbl').querySelector('tbody').innerHTML=body;
 }
@@ -524,7 +565,7 @@ function getOverseaView(){
   return rows.filter(d=> !q || `${d.sn} ${d.model} ${d.manufacture} ${d.description}`.toLowerCase().includes(q))
     .sort((a,b)=> (a.sortKey-b.sortKey) || (a.remainDue??999)-(b.remainDue??999));
 }
-const OS_COLS=[['sn','SN'],['model','型号'],['manufacture','厂商'],['oversea','海外厂商'],
+const OS_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['oversea','海外厂商'],['externalDue','外送Due'],
   ['sendDate','送出日期'],['daysN','送检天数'],['due','到期日'],['overdueDays','剩余/逾期'],['status','状态']];
 function renderOversea(){
   const rows=getOverseaView();
@@ -535,12 +576,12 @@ function renderOversea(){
           : d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN?'<span class="tag orange">⏰预警</span>'
           : '<span class="tag gray">待安排</span>';
     return `<tr>
-      <td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
-      <td>${esc(d.oversea||'—')}</td><td>${fmt(d.send)||'—'}</td>
+      <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
+      <td>${esc(d.oversea||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.send)||'—'}</td>
       <td>${d.isSent?d.daysN+' 天':'—'}</td><td>${fmt(d.due)}</td>
       <td>${d.overdueDays!=null?`<span style="color:#e5484d;font-weight:600">逾期${d.overdueDays}天</span>`:(d.remainDue!=null?d.remainDue+' 天':'—')}</td><td>${st}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="9" class="empty">无海外校准设备</td></tr>';
+  }).join('') || '<tr><td colspan="11" class="empty">无海外校准设备</td></tr>';
   document.getElementById('osTbl').querySelector('thead').innerHTML=`<tr>${head}</tr>`;
   document.getElementById('osTbl').querySelector('tbody').innerHTML=body;
 }
@@ -556,7 +597,7 @@ function getAllView(){
     .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${d.manufacture}`.toLowerCase().includes(q))
     .sort((a,b)=> a.sortKey-b.sortKey || (a.daysN??999)-(b.daysN??999));
 }
-const ALL_COLS=[['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],
+const ALL_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['externalDue','外送Due'],
   ['due','到期日'],['sendDate','送出日期'],['scope','类型'],['status','状态']];
 function statusTag(d){
   if(d.status==='expired') return '<span class="tag red">已过期</span>';
@@ -570,11 +611,11 @@ function renderAll(){
   const rows=getAllView();
   const head=ALL_COLS.map(c=>`<th>${c[1]}</th>`).join('');
   const body=rows.map(d=>`<tr>
-    <td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
-    <td>${esc(d.description||'—')}</td><td>${fmt(d.due)}</td><td>${fmt(d.send)||'—'}</td>
+    <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
+    <td>${esc(d.description||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.due)}</td><td>${fmt(d.send)||'—'}</td>
     <td>${d.isOversea?'<span class="tag purple">海外</span>':'<span class="tag gray">国内</span>'}</td>
     <td>${statusTag(d)}</td>
-  </tr>`).join('') || '<tr><td colspan="8" class="empty">无数据</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="10" class="empty">无数据</td></tr>';
   document.getElementById('allTbl').querySelector('thead').innerHTML=`<tr>${head}</tr>`;
   document.getElementById('allTbl').querySelector('tbody').innerHTML=body;
 }
@@ -622,7 +663,7 @@ function exportCSV(rows,prefix){
   const cols = prefix==='海外校准'?OS_COLS : prefix==='已送检待返回'?SENT_COLS : ALL_COLS;
   const head=cols.map(c=>c[1]).join(',');
   const body=rows.map(r=>cols.map(c=>{
-    let v=r[c[0]]; if(c[0]==='due'||c[0]==='sendDate') v=fmt(v)||'';
+    let v=r[c[0]]; if(c[0]==='due'||c[0]==='sendDate'||c[0]==='externalDue') v=fmt(v)||'';
     if(c[0]==='scope') v=r.isOversea?'海外':'国内';
     if(c[0]==='status') v={expired:'已过期',sent:'已送检',pending:'待送出'}[r.status]||r.status;
     return `"${String(v??'').replace(/"/g,'""')}"`;
