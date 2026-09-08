@@ -87,6 +87,8 @@ html,body{background:var(--bg);color:var(--text);
 .alert-zone{display:grid;grid-template-columns:1fr;gap:12px}
 .alert-group{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
 .alert-group .head{display:flex;align-items:center;gap:10px;padding:15px 20px;border-bottom:1px solid var(--line);font-weight:600;font-size:15px}
+.alert-group .head .alert-search{margin-left:auto;width:min(52%,620px);border:1px solid var(--line);background:var(--bg);border-radius:980px;padding:7px 13px;font-size:12px;color:var(--text);outline:none}
+.alert-group .head .alert-search:focus{border-color:var(--blue);background:#fff}
 .badge{font-size:12px;font-weight:600;padding:2px 9px;border-radius:980px}
 .badge.red{background:#ffe3e1;color:var(--red)}
 .badge.orange{background:#ffe9cc;color:var(--orange)}
@@ -94,6 +96,7 @@ html,body{background:var(--bg);color:var(--text);
 .alert-list{max-height:300px;overflow:auto}
 .alert-row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line)}
 .alert-row:last-child{border-bottom:none}
+.alert-row .alert-select{width:16px;height:16px;accent-color:var(--blue);flex:none;cursor:pointer}
 .alert-row .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .dot.red{background:var(--red)} .dot.orange{background:var(--orange)} .dot.yellow{background:var(--yellow)}
 .alert-row .info{flex:1;min-width:0}
@@ -115,12 +118,38 @@ html,body{background:var(--bg);color:var(--text);
 select,.mini{border:1px solid var(--line);background:#fff;border-radius:980px;padding:8px 14px;font-size:13px;color:var(--text);outline:none;cursor:pointer}
 select:focus{border-color:var(--blue)}
 
-.tbl-wrap{overflow:auto;max-height:460px}
-table{width:100%;border-collapse:collapse;font-size:13px}
+.tbl-wrap{overflow-y:auto;overflow-x:hidden;max-height:460px}
+table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
 thead th{position:sticky;top:0;background:var(--card-sub);text-align:left;padding:11px 14px;
-  font-weight:600;color:var(--text-2);border-bottom:1px solid var(--line);white-space:nowrap;font-size:12px;z-index:2}
-tbody td{padding:10px 14px;border-bottom:1px solid #f3f3f5;white-space:nowrap}
+  font-weight:600;color:var(--text-2);border-bottom:1px solid var(--line);white-space:normal;overflow-wrap:anywhere;word-break:break-word;font-size:11px;z-index:2}
+thead th.sortable{cursor:pointer;user-select:none}
+thead th.sortable:hover{color:var(--text)}
+thead th .sort-arrow{display:inline-block;min-width:14px;margin-left:4px;color:var(--text-3)}
+tbody td{padding:8px 10px;border-bottom:1px solid #f3f3f5;white-space:normal;overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
 tbody tr:hover{background:var(--card-sub)}
+
+/* 仅压缩“已送检待返回”表，其他表保持现状 */
+#sentTbl{font-size:11px}
+#sentTbl thead th,
+#sentTbl tbody td{
+  padding:6px 6px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  line-height:1.25;
+}
+#sentTbl thead th:nth-child(1){width:6%}
+#sentTbl thead th:nth-child(2){width:9%}
+#sentTbl thead th:nth-child(3){width:10%}
+#sentTbl thead th:nth-child(4){width:9%}
+#sentTbl thead th:nth-child(5){width:18%}
+#sentTbl thead th:nth-child(6){width:9%}
+#sentTbl thead th:nth-child(7){width:9%}
+#sentTbl thead th:nth-child(8){width:8%}
+#sentTbl thead th:nth-child(9){width:8%}
+#sentTbl thead th:nth-child(10){width:8%}
+#sentTbl thead th:nth-child(11){width:6%}
+
 .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:980px;line-height:1.6}
 .tag.blue{background:var(--blue-soft);color:var(--blue)}
 .tag.purple{background:var(--purple-soft);color:var(--purple)}
@@ -173,6 +202,9 @@ tbody tr:hover{background:var(--card-sub)}
   <!-- ===================== 2. 每日待办预警区 ===================== -->
   <div class="section-title"><span class="bar" style="background:var(--red)"></span>每日待办预警
     <span class="section-sub">按紧急程度排序，优先处理红色风险</span></div>
+  <div class="toolbar">
+    <select id="alertVendor" onchange="renderAlerts(RAW.standards.filter(isActive).map(compute))"></select>
+  </div>
   <div class="alert-zone" id="alertZone"></div>
 
   <!-- ===================== 3. 已送出校准设备专区 ===================== -->
@@ -188,6 +220,23 @@ tbody tr:hover{background:var(--card-sub)}
         <option value="all">全部</option>
         <option value="domestic">国内校准</option>
         <option value="oversea">海外校准</option>
+      </select>
+      <select id="sentVendor" onchange="renderSent()"></select>
+      <select id="sentSortField" onchange="onSortChange('sent')">
+        <option value="send">送出日期</option>
+        <option value="due">到期日</option>
+        <option value="externalDue">外送Due</option>
+        <option value="daysN">送检天数</option>
+        <option value="overdueDays">逾期天数</option>
+        <option value="id">ID</option>
+        <option value="sn">SN</option>
+        <option value="model">型号</option>
+        <option value="manufacture">厂商</option>
+        <option value="default">业务优先级</option>
+      </select>
+      <select id="sentSortOrder" onchange="onSortChange('sent')">
+        <option value="asc">升序</option>
+        <option value="desc">降序</option>
       </select>
       <button class="mini btn-ghost btn" onclick="exportCSV(getSentView(),'已送检待返回')">导出 CSV</button>
     </div>
@@ -208,6 +257,23 @@ tbody tr:hover{background:var(--card-sub)}
         <option value="all">全部海外</option>
         <option value="pending">待送出（≤30天预警）</option>
         <option value="sent">已送检待返回</option>
+      </select>
+      <select id="osVendor" onchange="renderOversea()"></select>
+      <select id="osSortField" onchange="onSortChange('os')">
+        <option value="default">业务优先级</option>
+        <option value="send">送出日期</option>
+        <option value="due">到期日</option>
+        <option value="externalDue">外送Due</option>
+        <option value="daysN">送检天数</option>
+        <option value="overdueDays">逾期天数</option>
+        <option value="id">ID</option>
+        <option value="sn">SN</option>
+        <option value="model">型号</option>
+        <option value="manufacture">厂商</option>
+      </select>
+      <select id="osSortOrder" onchange="onSortChange('os')">
+        <option value="asc">升序</option>
+        <option value="desc">降序</option>
       </select>
       <button class="mini btn-ghost btn" onclick="exportCSV(getOverseaView(),'海外校准')">导出 CSV</button>
     </div>
@@ -234,6 +300,23 @@ tbody tr:hover{background:var(--card-sub)}
         <option value="all">境内+海外</option>
         <option value="domestic">仅国内</option>
         <option value="oversea">仅海外</option>
+      </select>
+      <select id="allVendor" onchange="renderAll()"></select>
+      <select id="allSortField" onchange="onSortChange('all')">
+        <option value="default">业务优先级</option>
+        <option value="send">送出日期</option>
+        <option value="due">到期日</option>
+        <option value="externalDue">外送Due</option>
+        <option value="daysN">送检天数</option>
+        <option value="overdueDays">逾期天数</option>
+        <option value="id">ID</option>
+        <option value="sn">SN</option>
+        <option value="model">型号</option>
+        <option value="manufacture">厂商</option>
+      </select>
+      <select id="allSortOrder" onchange="onSortChange('all')">
+        <option value="asc">升序</option>
+        <option value="desc">降序</option>
       </select>
       <button class="mini btn-ghost btn" onclick="exportCSV(getAllView(),'全量设备')">导出 CSV</button>
     </div>
@@ -285,6 +368,32 @@ let RAW = null;        // {generatedAt, source, standards:[], overseas:[]}
 let TODAY = new Date();
 let charts = {};
 let LAST_REFRESH_AT = null;
+const SELECTED_ALERT_STORAGE_KEY = 'calibration-selected-alerts';
+const selectedAlerts = new Set();
+try {
+  JSON.parse(localStorage.getItem(SELECTED_ALERT_STORAGE_KEY) || '[]').forEach(key=>selectedAlerts.add(key));
+} catch (error) {}
+const SORT_STATE = {
+  sent: { field: 'send', order: 'asc' },
+  os: { field: 'default', order: 'asc' },
+  all: { field: 'default', order: 'asc' },
+};
+
+const SORT_FIELD_TYPE = {
+  default: 'default',
+  send: 'date',
+  due: 'date',
+  externalDue: 'date',
+  daysN: 'number',
+  overdueDays: 'number',
+  id: 'text',
+  sn: 'text',
+  model: 'text',
+  manufacture: 'text',
+  calVendor: 'text',
+};
+
+const SORTABLE_FIELDS = new Set(['default','send','due','externalDue','daysN','overdueDays','id','sn','model','manufacture','calVendor']);
 
 /* ===================== 日期工具 ===================== */
 // 解析日期：兼容 "2026-07-10"、"2026-07-10 14:30:00"、"10-Jul-26"、"7/10/2026" 等
@@ -369,6 +478,34 @@ function fmtClock(d){ return d? `${String(d.getHours()).padStart(2,'0')}:${Strin
 function days(a,b){ return Math.round((stripTime(b)-stripTime(a))/86400000); }
 function stripTime(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
 function isActive(dev){ return dev.active && String(dev.active).trim().toLowerCase()==='active'; }
+function alertSelectionKey(dev){ return `${dev.id||''}|${dev.sn||''}|${dev.model||''}`; }
+function saveSelectedAlerts(){
+  try { localStorage.setItem(SELECTED_ALERT_STORAGE_KEY,JSON.stringify([...selectedAlerts])); } catch (error) {}
+}
+function vendorValue(dev){
+  const vendor=String(dev.calVendor||'').trim();
+  return /^tek/i.test(vendor) ? 'TEK' : vendor;
+}
+function matchesVendor(dev, selected){
+  if(selected==='__missing__') return !vendorValue(dev);
+  return !selected || vendorValue(dev)===selected;
+}
+function populateVendorSelect(id, rows){
+  const select=document.getElementById(id);
+  if(!select) return;
+  const selected=select.value;
+  const counts=new Map();
+  rows.forEach(row=>{
+    const vendor=vendorValue(row);
+    counts.set(vendor,(counts.get(vendor)||0)+1);
+  });
+  const vendors=[...counts.keys()].filter(Boolean).sort((a,b)=>a.localeCompare(b,'zh-CN'));
+  const options=[`<option value="">全部 Vendor（${rows.length}）</option>`];
+  vendors.forEach(vendor=>options.push(`<option value="${esc(vendor)}">${esc(vendor)}（${counts.get(vendor)}）</option>`));
+  if(counts.has('')) options.push(`<option value="__missing__">未填写 Vendor（${counts.get('')}）</option>`);
+  select.innerHTML=options.join('');
+  select.value=[...select.options].some(option=>option.value===selected) ? selected : '';
+}
 function isFluke57xx(dev){
   const maker = String(dev.manufacture||'').trim().toLowerCase();
   const model = String(dev.model||'').trim().toUpperCase();
@@ -384,6 +521,114 @@ function parseExternalDueFromComments(comments){
 
   const anyDate = s.match(/([0-9]{1,2}-[A-Za-z]{3}-[0-9]{2,4}|[0-9]{4}[\/-][0-9]{1,2}[\/-][0-9]{1,2}|[0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/i);
   return anyDate ? parseDate(anyDate[1]) : null;
+}
+
+/* ===================== 排序工具 ===================== */
+function toSortValue(row, field){
+  if(field==='send') return row.send || parseDate(row.sendDate);
+  if(field==='due') return row.due || parseDate(row.due);
+  if(field==='externalDue') return row.externalDue || parseDate(row.externalDue);
+  return row[field];
+}
+
+function normalizeSortValue(type, value){
+  if(value==null) return { empty:true, value:null };
+  if(type==='date'){
+    const d = parseDate(value);
+    return d ? { empty:false, value:d.getTime() } : { empty:true, value:null };
+  }
+  if(type==='number'){
+    const n = Number(value);
+    return Number.isFinite(n) ? { empty:false, value:n } : { empty:true, value:null };
+  }
+  const s = String(value).trim();
+  return s ? { empty:false, value:s } : { empty:true, value:null };
+}
+
+function defaultComparator(tableKey, a, b){
+  if(tableKey==='sent') return (a.daysN??999999) - (b.daysN??999999);
+  if(tableKey==='os') return (a.sortKey-b.sortKey) || ((a.remainDue??999999)-(b.remainDue??999999));
+  return (a.sortKey-b.sortKey) || ((a.daysN??999999)-(b.daysN??999999));
+}
+
+function compareByField(tableKey, field, order, a, b){
+  if(field==='default') return defaultComparator(tableKey, a, b);
+  const type = SORT_FIELD_TYPE[field] || 'text';
+  const av = normalizeSortValue(type, toSortValue(a, field));
+  const bv = normalizeSortValue(type, toSortValue(b, field));
+  if(av.empty && bv.empty) return defaultComparator(tableKey, a, b);
+  if(av.empty) return 1;
+  if(bv.empty) return -1;
+
+  let cmp = 0;
+  if(type==='text') cmp = String(av.value).localeCompare(String(bv.value), 'zh-CN', { numeric:true, sensitivity:'base' });
+  else cmp = av.value - bv.value;
+  if(cmp===0) return defaultComparator(tableKey, a, b);
+  return order==='desc' ? -cmp : cmp;
+}
+
+function stableSort(rows, comparator){
+  return rows
+    .map((item, index)=>({ item, index }))
+    .sort((a,b)=> comparator(a.item, b.item) || (a.index - b.index))
+    .map(x=>x.item);
+}
+
+function applySort(tableKey, rows){
+  const state = SORT_STATE[tableKey];
+  return stableSort(rows, (a,b)=> compareByField(tableKey, state.field, state.order, a, b));
+}
+
+function onSortChange(tableKey){
+  const fieldEl = document.getElementById(`${tableKey}SortField`);
+  const orderEl = document.getElementById(`${tableKey}SortOrder`);
+  if(!fieldEl || !orderEl) return;
+  SORT_STATE[tableKey].field = fieldEl.value;
+  SORT_STATE[tableKey].order = orderEl.value;
+  if(tableKey==='sent') renderSent();
+  else if(tableKey==='os') renderOversea();
+  else renderAll();
+}
+
+function syncSortControls(){
+  ['sent','os','all'].forEach(k=>{
+    const fieldEl = document.getElementById(`${k}SortField`);
+    const orderEl = document.getElementById(`${k}SortOrder`);
+    if(fieldEl) fieldEl.value = SORT_STATE[k].field;
+    if(orderEl) orderEl.value = SORT_STATE[k].order;
+  });
+}
+
+function mapColumnKeyToSortField(colKey){
+  if(colKey==='sendDate') return 'send';
+  if(colKey==='status' || colKey==='scope') return 'default';
+  return colKey;
+}
+
+function getSortArrow(tableKey, field){
+  const state = SORT_STATE[tableKey];
+  if(state.field!==field) return '<span class="sort-arrow">↕</span>';
+  return `<span class="sort-arrow">${state.order==='asc'?'▲':'▼'}</span>`;
+}
+
+function buildHeaderCell(tableKey, colKey, label){
+  const sortField = mapColumnKeyToSortField(colKey);
+  if(!SORTABLE_FIELDS.has(sortField)) return `<th>${label}</th>`;
+  const arrow = getSortArrow(tableKey, sortField);
+  return `<th class="sortable" onclick="onHeaderSort('${tableKey}','${sortField}')">${label}${arrow}</th>`;
+}
+
+function onHeaderSort(tableKey, field){
+  const state = SORT_STATE[tableKey];
+  if(state.field===field) state.order = state.order==='asc' ? 'desc' : 'asc';
+  else {
+    state.field = field;
+    state.order = 'asc';
+  }
+  syncSortControls();
+  if(tableKey==='sent') renderSent();
+  else if(tableKey==='os') renderOversea();
+  else renderAll();
 }
 
 /* ===================== 设备计算（核心逻辑） ===================== */
@@ -426,6 +671,7 @@ function buildAll(){
   const devices = RAW.standards.filter(isActive).map(compute)
                 .sort((a,b)=> a.sortKey-b.sortKey || (a.daysN??999)-(b.daysN??999));
   const oversea = RAW.overseas.map(o=>({...o, _due:parseDate(o.due||o.date), _send:parseDate(o.sendDate||o.date)}));
+  syncSortControls();
 
   document.getElementById('subDate').textContent =
     `${fmt(TODAY)} · 共 ${devices.length} 台有效设备 · 仅统计 Active`;
@@ -488,60 +734,97 @@ function renderCards(devs){
 }
 
 /* ---------- 2. 每日待办预警 ---------- */
-function alertRow(d,level,msg){
+function alertRow(d,level,msg,selectable=false){
   const dot = level==='red'?'red':level==='orange'?'orange':'yellow';
   const dcls = level==='red'?'red':level==='orange'?'orange':'yellow';
+  const selectionKey=alertSelectionKey(d);
+  const selectionInput=selectable?`<input class="alert-select" type="checkbox" data-selection-key="${esc(selectionKey)}" onchange="toggleAlertSelection(this)"${selectedAlerts.has(selectionKey)?' checked':''} title="选中设备">`:'';
   const dayTxt = d.status==='expired'
       ? `逾期 ${Math.abs(d.daysN)} 天`
       : `剩 ${d.daysN} 天`;
   const extTxt = d.externalDue ? ` · 外送 Due ${fmt(d.externalDue)}` : '';
+  const vendorTxt = d.calVendor ? ` · Vendor ${esc(d.calVendor)}` : '';
   return `<div class="alert-row">
+    ${selectionInput}
     <span class="dot ${dot}"></span>
     <div class="info">
       <div class="t">${esc(d.model||d.description||d.sn||'—')} <span style="color:var(--text-3);font-weight:400">· ID ${esc(d.id||'—')} · SN ${esc(d.sn||'—')}</span></div>
-      <div class="s">${msg} · Due ${fmt(d.due)}${extTxt}</div>
+      <div class="s">${msg} · Due ${fmt(d.due)}${vendorTxt}${extTxt}</div>
     </div>
     <div class="days ${dcls}">${dayTxt}</div>
   </div>`;
 }
 function renderAlerts(devs){
+  const actionable=devs.filter(d=>d.status==='expired' || (d.status==='pending' && !d.isSent));
+  populateVendorSelect('alertVendor', actionable);
+  const vendor=document.getElementById('alertVendor').value;
+  devs=devs.filter(d=>matchesVendor(d,vendor));
   const expired = devs.filter(d=>d.status==='expired');
   const domWarn = devs.filter(d=>!d.isOversea && !d.isSent && d.remainDue!=null && d.remainDue>=0 && d.remainDue<=CONFIG.DOMESTIC_WARN);
   const osWarn  = devs.filter(d=>d.isOversea && !d.isSent && d.remainDue!=null && d.remainDue>=0 && d.remainDue<=CONFIG.OVERSEA_WARN);
-  const pend    = devs.filter(d=>!d.isSent && !d.status==='expired' && (d.remainDue==null || d.remainDue>CONFIG.DOMESTIC_WARN));
+  const pend    = devs.filter(d=>!d.isSent && d.status!=='expired' && (d.remainDue==null || d.remainDue>CONFIG.DOMESTIC_WARN));
 
   const groups=[];
   groups.push({title:`🔴 红色高风险 · 已过期未召回`, badge:`${expired.length} 台`, cls:'red',
     body: expired.length? expired.map(d=>alertRow(d,'red','⚠️ 立即召回并安排校准')).join('') : '<div class="empty">无 · 全部在控 ✅</div>'});
-  groups.push({title:`🟠 国内紧急预警 · ≤${CONFIG.DOMESTIC_WARN}天`, badge:`${domWarn.length} 台`, cls:'orange',
-    body: domWarn.length? domWarn.map(d=>alertRow(d,'orange','尽快安排送出校准')).join('') : '<div class="empty">暂无国内紧急预警</div>'});
+  groups.push({id:'domesticAlertGroup', title:`🟠 国内紧急预警 · ≤${CONFIG.DOMESTIC_WARN}天`, badge:`${domWarn.length} 台`, cls:'orange',
+    body: domWarn.length? domWarn.map(d=>alertRow(d,'orange','尽快安排送出校准',true)).join('') : '<div class="empty">暂无国内紧急预警</div>'});
   groups.push({title:`🟠 海外紧急预警 · ≤${CONFIG.OVERSEA_WARN}天`, badge:`${osWarn.length} 台`, cls:'orange',
     body: osWarn.length? osWarn.map(d=>alertRow(d,'orange','海外需提前1个月准备，立即启动送样')).join('') : '<div class="empty">暂无海外紧急预警</div>'});
   groups.push({title:`🟡 待办提醒 · 待安排校准`, badge:`${pend.length} 台`, cls:'yellow',
     body: pend.length? pend.slice(0,50).map(d=>alertRow(d,'yellow','近期需安排校准')).join('') : '<div class="empty">无</div>'});
 
   document.getElementById('alertZone').innerHTML = groups.map(g=>`
-    <div class="alert-group">
-      <div class="head">${g.title} <span class="badge ${g.cls}">${g.badge}</span></div>
+    <div class="alert-group"${g.id?` id="${g.id}"`:''}>
+      <div class="head">${g.title} <span class="badge ${g.cls}">${g.badge}</span>${g.id?'<span class="badge blue" id="domesticSelectionCount"></span><input class="alert-search" placeholder="搜索 编号 / 型号 / SN / Vendor…" oninput="filterDomesticAlerts(this)">':''}</div>
       <div class="alert-list">${g.body}</div>
     </div>`).join('');
+  updateDomesticSelectionCount();
+}
+function toggleAlertSelection(input){
+  const key=input.dataset.selectionKey;
+  if(input.checked) selectedAlerts.add(key);
+  else selectedAlerts.delete(key);
+  saveSelectedAlerts();
+  updateDomesticSelectionCount();
+}
+function updateDomesticSelectionCount(){
+  const count=document.getElementById('domesticSelectionCount');
+  if(!count) return;
+  count.textContent=`已选 ${selectedAlerts.size} 台`;
+}
+function filterDomesticAlerts(input){
+  const q=input.value.trim().toLowerCase();
+  const group=document.getElementById('domesticAlertGroup');
+  const rows=[...group.querySelectorAll('.alert-row')];
+  let visible=0;
+  rows.forEach(row=>{
+    const matched=!q || row.textContent.toLowerCase().includes(q);
+    row.classList.toggle('hidden',!matched);
+    if(matched) visible++;
+  });
+  group.querySelector('.badge').textContent=`${visible} 台`;
 }
 
 /* ---------- 3. 已送检待返回 ---------- */
 function getSentView(){
   const scope=document.getElementById('sentScope').value;
   const q=document.getElementById('sentSearch').value.trim().toLowerCase();
-  return RAW.standards.filter(isActive).map(compute)
+  const baseRows = RAW.standards.filter(isActive).map(compute)
     .filter(d=>d.isSent && d.duePast)
-    .filter(d=> scope==='all' || (scope==='domestic'&&!d.isOversea) || (scope==='oversea'&&d.isOversea))
-    .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${fmt(d.send)}`.toLowerCase().includes(q))
-    .sort((a,b)=>a.daysN-b.daysN);
+    .filter(d=> scope==='all' || (scope==='domestic'&&!d.isOversea) || (scope==='oversea'&&d.isOversea));
+  populateVendorSelect('sentVendor', baseRows);
+  const vendor=document.getElementById('sentVendor').value;
+  const rows=baseRows
+    .filter(d=>matchesVendor(d,vendor))
+    .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${d.calVendor} ${fmt(d.send)}`.toLowerCase().includes(q));
+  return applySort('sent', rows);
 }
 const SENT_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['externalDue','外送Due'],
   ['sendDate','送出日期'],['daysN','送检天数'],['due','到期日'],['overdueDays','逾期天数'],['scope','类型']];
 function renderSent(){
   const rows=getSentView();
-  const head=SENT_COLS.map(c=>`<th>${c[1]}</th>`).join('');
+  const head=SENT_COLS.map(c=>buildHeaderCell('sent', c[0], c[1])).join('');
   const body=rows.map(d=>`<tr>
     <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
     <td>${esc(d.description||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.send)}</td>
@@ -557,19 +840,23 @@ function renderSent(){
 function getOverseaView(){
   const scope=document.getElementById('osScope').value;
   const q=document.getElementById('osSearch').value.trim().toLowerCase();
-  let rows = RAW.standards.filter(isActive).map(compute).filter(d=>d.isOversea);
-  if(scope==='pending') rows=rows.filter(d=>!d.isSent && d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN);
-  if(scope==='sent') rows=rows.filter(d=>d.isSent && d.duePast);
+  let baseRows = RAW.standards.filter(isActive).map(compute).filter(d=>d.isOversea);
+  if(scope==='pending') baseRows=baseRows.filter(d=>!d.isSent && d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN);
+  if(scope==='sent') baseRows=baseRows.filter(d=>d.isSent && d.duePast);
   // 近一个月需要动作：待送出(≤30天预警) 或 已送检但仍未返回(逾期)
-  if(scope==='action') rows=rows.filter(d=> (!d.isSent && d.remainDue!=null && d.remainDue>=0 && d.remainDue<=CONFIG.OVERSEA_WARN) || (d.isSent && d.duePast));
-  return rows.filter(d=> !q || `${d.sn} ${d.model} ${d.manufacture} ${d.description}`.toLowerCase().includes(q))
-    .sort((a,b)=> (a.sortKey-b.sortKey) || (a.remainDue??999)-(b.remainDue??999));
+  if(scope==='action') baseRows=baseRows.filter(d=> (!d.isSent && d.remainDue!=null && d.remainDue>=0 && d.remainDue<=CONFIG.OVERSEA_WARN) || (d.isSent && d.duePast));
+  populateVendorSelect('osVendor', baseRows);
+  const vendor=document.getElementById('osVendor').value;
+  const rows=baseRows
+    .filter(d=>matchesVendor(d,vendor))
+    .filter(d=> !q || `${d.sn} ${d.model} ${d.manufacture} ${d.description} ${d.calVendor}`.toLowerCase().includes(q));
+  return applySort('os', rows);
 }
 const OS_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['oversea','海外厂商'],['externalDue','外送Due'],
   ['sendDate','送出日期'],['daysN','送检天数'],['due','到期日'],['overdueDays','剩余/逾期'],['status','状态']];
 function renderOversea(){
   const rows=getOverseaView();
-  const head=OS_COLS.map(c=>`<th>${c[1]}</th>`).join('');
+  const head=OS_COLS.map(c=>buildHeaderCell('os', c[0], c[1])).join('');
   const body=rows.map(d=>{
         let st = d.status==='sent'?'<span class="tag purple">已送出</span>'
           : d.status==='returned'?'<span class="tag green-2">已返回</span>'
@@ -591,13 +878,17 @@ function getAllView(){
   const sf=document.getElementById('statusFilter').value;
   const sc=document.getElementById('scopeFilter').value;
   const q=document.getElementById('allSearch').value.trim().toLowerCase();
-  return RAW.standards.filter(isActive).map(compute)
+  const baseRows = RAW.standards.filter(isActive).map(compute)
     .filter(d=> sf==='all' || d.status===sf)
-    .filter(d=> sc==='all' || (sc==='domestic'&&!d.isOversea) || (sc==='oversea'&&d.isOversea))
-    .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${d.manufacture}`.toLowerCase().includes(q))
-    .sort((a,b)=> a.sortKey-b.sortKey || (a.daysN??999)-(b.daysN??999));
+    .filter(d=> sc==='all' || (sc==='domestic'&&!d.isOversea) || (sc==='oversea'&&d.isOversea));
+  populateVendorSelect('allVendor', baseRows);
+  const vendor=document.getElementById('allVendor').value;
+  const rows=baseRows
+    .filter(d=>matchesVendor(d,vendor))
+    .filter(d=> !q || `${d.sn} ${d.model} ${d.description} ${d.manufacture} ${d.calVendor}`.toLowerCase().includes(q));
+  return applySort('all', rows);
 }
-const ALL_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['externalDue','外送Due'],
+const ALL_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['calVendor','Cal Vendor'],['externalDue','外送Due'],
   ['due','到期日'],['sendDate','送出日期'],['scope','类型'],['status','状态']];
 function statusTag(d){
   if(d.status==='expired') return '<span class="tag red">已过期</span>';
@@ -609,13 +900,13 @@ function statusTag(d){
 }
 function renderAll(){
   const rows=getAllView();
-  const head=ALL_COLS.map(c=>`<th>${c[1]}</th>`).join('');
+  const head=ALL_COLS.map(c=>buildHeaderCell('all', c[0], c[1])).join('');
   const body=rows.map(d=>`<tr>
     <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
-    <td>${esc(d.description||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.due)}</td><td>${fmt(d.send)||'—'}</td>
+    <td>${esc(d.description||'—')}</td><td>${esc(d.calVendor||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.due)}</td><td>${fmt(d.send)||'—'}</td>
     <td>${d.isOversea?'<span class="tag purple">海外</span>':'<span class="tag gray">国内</span>'}</td>
     <td>${statusTag(d)}</td>
-  </tr>`).join('') || '<tr><td colspan="10" class="empty">无数据</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="11" class="empty">无数据</td></tr>';
   document.getElementById('allTbl').querySelector('thead').innerHTML=`<tr>${head}</tr>`;
   document.getElementById('allTbl').querySelector('tbody').innerHTML=body;
 }
@@ -665,7 +956,7 @@ function exportCSV(rows,prefix){
   const body=rows.map(r=>cols.map(c=>{
     let v=r[c[0]]; if(c[0]==='due'||c[0]==='sendDate'||c[0]==='externalDue') v=fmt(v)||'';
     if(c[0]==='scope') v=r.isOversea?'海外':'国内';
-    if(c[0]==='status') v={expired:'已过期',sent:'已送检',pending:'待送出'}[r.status]||r.status;
+    if(c[0]==='status') v={expired:'已过期',sent:'已送检',pending:'待送出',returned:'已返回'}[r.status]||r.status;
     return `"${String(v??'').replace(/"/g,'""')}"`;
   }).join(',')).join('\n');
   const blob=new Blob(['\ufeff'+head+'\n'+body],{type:'text/csv;charset=utf-8'});
