@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>校准管理仪表盘</title>
+<title>设备仪器校准追踪与预警系统</title>
 
 <!-- ECharts：用于状态分布、到期时间线等可视化图表 -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -176,6 +176,75 @@ tbody tr:hover{background:var(--card-sub)}
 .footer{text-align:center;color:var(--text-3);font-size:12px;margin-top:40px}
 .hidden{display:none!important}
 .kpi-note{font-size:12px;color:var(--text-3);margin-top:4px;padding:0 2px}
+
+/* ===================== V2 行动导向工作台 ===================== */
+:root{
+  --bg:#f8fafc;--card:#fff;--card-sub:#f8fafc;--text:#172033;--text-2:#475569;
+  --text-3:#64748b;--line:#e2e8f0;--radius:8px;--radius-sm:6px;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 6px 18px rgba(15,23,42,.035);
+  --shadow-hover:0 2px 4px rgba(15,23,42,.05),0 9px 24px rgba(15,23,42,.055);
+  --red:#b91c1c;--red-soft:#fee2e2;--orange:#a16207;--orange-soft:#fef3c7;
+  --yellow:#ca8a04;--yellow-soft:#fef9c3;--blue:#1d4ed8;--blue-soft:#dbeafe;
+  --green:#15803d;--green-soft:#dcfce7;--purple:#6d28d9;--purple-soft:#ede9fe;
+}
+html,body{font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;overflow-x:hidden}
+body{background:linear-gradient(180deg,#eef6ff 0,#f8fafc 220px,#f8fafc 100%)}
+.wrap{max-width:1500px;padding:26px 24px 64px}
+.topbar{padding:18px 20px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px}
+.topbar h1{font-size:24px;letter-spacing:0;color:var(--text)}
+.topbar .sub{font-size:12px;color:var(--text-3)}
+.actions-meta{display:grid;gap:2px;text-align:right;max-width:480px}
+.actions-meta .kpi-note{white-space:normal}
+.btn{border-radius:6px;min-height:36px}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(29,78,216,.22);outline-offset:2px}
+.btn[disabled]{cursor:wait;opacity:.65}
+.cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{min-height:132px;border:1px solid var(--line);border-top:4px solid transparent;border-radius:var(--radius);box-shadow:var(--shadow);padding:17px 18px;transform:none}
+.card:hover{transform:none}
+.card .value{font-size:36px;letter-spacing:0;font-variant-numeric:tabular-nums}
+.card .icon{font-size:12px;font-weight:700;width:auto;height:auto;padding:5px 8px;border-radius:5px}
+.card.accent-red{border-top-color:var(--red)}
+.card.accent-orange{border-top-color:var(--orange)}
+.card.accent-blue{border-top-color:var(--blue)}
+.card.accent-green{background:var(--green-soft);border-top-color:var(--green)}
+.card.accent-green .value{color:var(--green)}
+.card.accent-green .icon{background:#bbf7d0;color:var(--green)}
+.section-title{font-size:16px;margin:22px 0 10px}
+.core-workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);gap:16px;align-items:start}
+.action-column{min-width:0}
+.insight-column{display:grid;gap:14px;position:sticky;top:16px}
+.chart-card{border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.chart-card h4{font-size:14px;margin-bottom:8px}
+.chart-card .chart{height:285px}
+.panel,.alert-group{border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.alert-zone{gap:10px}
+.alert-group .head{padding:12px 14px}
+.alert-list{max-height:270px}
+.alert-row{padding:10px 14px}
+.tbl-wrap{overflow:auto}
+table{min-width:980px;font-size:12px}
+thead th{font-size:11px}
+#sentTbl{font-size:12px}
+#sentTbl thead th,#sentTbl tbody td{padding:9px 8px}
+.lag-badge{display:inline-flex;align-items:center;gap:4px;margin-left:5px;padding:2px 6px;border-radius:4px;background:var(--red-soft);color:var(--red);font-size:10px;font-weight:700;white-space:nowrap}
+.support-chart{max-width:520px}
+@media(max-width:1279px){
+  .core-workspace{grid-template-columns:minmax(0,1fr)}
+  .insight-column{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:767px){
+  .wrap{padding:14px 12px 44px}.topbar{align-items:flex-start;padding:15px}
+  .topbar h1{font-size:20px}.actions{width:100%;justify-content:space-between}
+  .actions-meta{text-align:left;max-width:calc(100% - 120px)}
+  .cards,.insight-column{grid-template-columns:minmax(0,1fr)}.card{min-height:112px}
+  .toolbar{padding:10px;align-items:stretch}.search{flex-basis:100%}.toolbar select,.toolbar .btn{flex:1}
+  .toolbar>*{min-width:0}.section-title{flex-wrap:wrap}.section-sub{flex-basis:100%;margin-left:12px}
+  .alert-group .head{align-items:flex-start;flex-wrap:wrap}.alert-group .head .alert-search{width:100%;order:3}
+  .alert-list{max-height:none;overflow:visible}
+  .alert-row{align-items:flex-start;flex-wrap:wrap}.alert-row .days{font-size:15px;min-width:auto;margin-left:24px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -184,13 +253,17 @@ tbody tr:hover{background:var(--card-sub)}
   <!-- ===================== 顶部栏 ===================== -->
   <div class="topbar">
     <div>
-      <h1>校准管理仪表盘</h1>
+      <h1>设备仪器校准追踪与预警系统</h1>
+      <div class="sub">执行团队 · 日常校准任务与送检进度</div>
       <div class="sub" id="subDate">— 加载中 · 仅统计 Active 有效设备</div>
     </div>
     <div class="actions">
       <span class="refresh-dot" id="refreshDot" title="数据状态"></span>
-      <span class="kpi-note" id="srcInfo"></span>
-      <button class="btn btn-soft" onclick="refreshData()">↻ 刷新</button>
+      <div class="actions-meta">
+        <span class="kpi-note" id="srcInfo"></span>
+        <span class="kpi-note" id="loadInfo"></span>
+      </div>
+      <button class="btn btn-primary" id="refreshButton" onclick="refreshData()" aria-label="重新载入最新数据">↻ 重新载入最新数据</button>
     </div>
   </div>
 
@@ -199,17 +272,20 @@ tbody tr:hover{background:var(--card-sub)}
     <span class="section-sub" id="srcSub"></span></div>
   <div class="cards" id="cards"></div>
 
+  <div class="core-workspace">
+  <div class="action-column">
+
   <!-- ===================== 2. 每日待办预警区 ===================== -->
-  <div class="section-title"><span class="bar" style="background:var(--red)"></span>每日待办预警
-    <span class="section-sub">按紧急程度排序，优先处理红色风险</span></div>
+  <div class="section-title"><span class="bar" style="background:var(--red)"></span>待办：超期与临期设备
+    <span class="section-sub">按紧急程度排序，优先处理超期风险</span></div>
   <div class="toolbar">
     <select id="alertVendor" onchange="renderAlerts(RAW.standards.filter(isActive).map(compute))"></select>
   </div>
   <div class="alert-zone" id="alertZone"></div>
 
   <!-- ===================== 3. 已送出校准设备专区 ===================== -->
-  <div class="section-title"><span class="bar" style="background:var(--blue)"></span>已送检待返回
-    <span class="section-sub">有 Send Date 且已过期的设备（仍未返回）</span></div>
+  <div class="section-title"><span class="bar" style="background:var(--blue)"></span>追踪：已送外校进度
+    <span class="section-sub">超过 15 天自动标记催办</span></div>
   <div class="panel">
     <div class="toolbar">
       <div class="search">
@@ -241,6 +317,13 @@ tbody tr:hover{background:var(--card-sub)}
       <button class="mini btn-ghost btn" onclick="exportCSV(getSentView(),'已送检待返回')">导出 CSV</button>
     </div>
     <div class="tbl-wrap"><table id="sentTbl"><thead></thead><tbody></tbody></table></div>
+  </div>
+  </div>
+
+  <aside class="insight-column" aria-label="校准状态图表">
+    <div class="chart-card"><h4>设备资产健康状态占比</h4><div class="chart" id="chartStatus"></div></div>
+    <div class="chart-card"><h4>未来 12 个月校准到期量</h4><div class="chart" id="chartDue"></div></div>
+  </aside>
   </div>
 
   <!-- ===================== 4. 海外校准专属专区 ===================== -->
@@ -323,11 +406,9 @@ tbody tr:hover{background:var(--card-sub)}
     <div class="tbl-wrap"><table id="allTbl"><thead></thead><tbody></tbody></table></div>
   </div>
 
-  <div class="section-title"><span class="bar"></span>可视化分析</div>
-  <div class="charts">
-    <div class="chart-card"><h4>设备状态分布</h4><div class="chart" id="chartStatus"></div></div>
+  <div class="section-title"><span class="bar"></span>资产范围</div>
+  <div class="charts support-chart">
     <div class="chart-card"><h4>国内 / 海外校准占比</h4><div class="chart" id="chartScope"></div></div>
-    <div class="chart-card"><h4>到期月份分布</h4><div class="chart" id="chartDue"></div></div>
   </div>
 
   <div class="footer">校准管理仪表盘 · 数据以本地 Excel 为准 · 仅统计 Active 设备</div>
@@ -349,14 +430,14 @@ const CONFIG = {
     matStatus:'MAT Status', active:'Active or Deactive'
   },
   // 预警周期（天）
-  DOMESTIC_WARN: 7,   // 国内校准：到期 ≤7 天预警
+  DOMESTIC_WARN: 30,  // 国内校准：到期 ≤30 天预警
   OVERSEA_WARN: 30,   // 海外校准：到期 ≤30 天预警
 };
 
 /* 配色（与 CSS 变量对应，供图表使用） */
 const C = {
   red:'#ff3b30', orange:'#ff9500', yellow:'#ffcc00', blue:'#007aff',
-  green:'#34c759', purple:'#af52de', gray:'#8e8e93',
+  green:'#34c759', green2:'#2fb36b', purple:'#af52de', gray:'#8e8e93',
   text:'#1d1d1f', text2:'#6e6e73', line:'#e8e8ed'
 };
 
@@ -661,7 +742,15 @@ function compute(dev){
   const externalRemain = (externalDue && !externalDuePast)? days(TODAY,externalDue) : null;
   // 逾期天数：已送检/已过期 且 仍未返回（今天 − 到期日，正数）
   const overdueDays = (due && duePast)? days(due,TODAY) : null;
-  return {...dev, due, send, calDate, isSent, isOversea, duePast, status, daysN, remainDue, overdueDays, sortKey, is57xx, externalDue, externalRemain};
+  const needsReview = !due && !isSent;
+  return {...dev, due, send, calDate, isSent, isOversea, duePast, status, daysN, remainDue, overdueDays, sortKey, is57xx, externalDue, externalRemain, needsReview};
+}
+
+function kpiBucket(dev){
+  if(dev.status==='expired') return 'expired';
+  if(!dev.isSent && dev.remainDue!=null && dev.remainDue>=0 && dev.remainDue<=30) return 'dueSoon';
+  if(dev.status==='sent') return 'sent';
+  return 'normal';
 }
 
 /* ===================== 主构建 ===================== */
@@ -678,7 +767,9 @@ function buildAll(){
   document.getElementById('srcSub').textContent =
     RAW.source? `数据源：${RAW.source}` : '（内置示例数据）';
   document.getElementById('srcInfo').textContent =
-    `数据更新于 ${RAW.generatedAt||'—'} · 页面刷新于 ${fmtClock(LAST_REFRESH_AT||TODAY)}`;
+    `数据源：${RAW.source||'内置数据'} · Excel 生成：${RAW.generatedAt||'—'}`;
+  document.getElementById('loadInfo').textContent =
+    `页面载入：${fmt(TODAY)} ${fmtClock(LAST_REFRESH_AT||TODAY)}`;
 
   renderCards(devices);
   renderAlerts(devices);
@@ -690,7 +781,9 @@ function buildAll(){
 }
 function refreshData(){
   const dot = document.getElementById('refreshDot');
+  const button = document.getElementById('refreshButton');
   if(dot) dot.classList.add('loading');
+  if(button){ button.disabled=true; button.textContent='正在重新载入…'; }
   LAST_REFRESH_AT = new Date();
 
   const script = document.createElement('script');
@@ -698,11 +791,15 @@ function refreshData(){
   script.onload = ()=>{
     RAW = (typeof __AUTO_DATA__ !== 'undefined') ? __AUTO_DATA__ : RAW;
     LAST_REFRESH_AT = new Date();
+    if(button){ button.disabled=false; button.textContent='↻ 重新载入最新数据'; }
     buildAll();
+    script.remove();
   };
   script.onerror = ()=>{
     if(dot) dot.classList.remove('loading');
+    if(button){ button.disabled=false; button.textContent='↻ 重新载入最新数据'; }
     alert('刷新失败：未能重新读取 data.js');
+    script.remove();
   };
   document.head.appendChild(script);
 }
@@ -710,19 +807,13 @@ function refreshData(){
 /* ---------- 1. 总览卡片 ---------- */
 function renderCards(devs){
   const total=devs.length;
-  const sent=devs.filter(d=>d.isSent && d.duePast);          // 已送检且仍未返回（逾期）
-  const returned=devs.filter(d=>d.status==='returned');      // 已送检且已返回
-  const pending=devs.filter(d=>!d.isSent && d.status==='pending');
-  const expired=devs.filter(d=>d.status==='expired');
-  const dom7=devs.filter(d=>!d.isOversea && !d.isSent && d.remainDue!=null && d.remainDue<=CONFIG.DOMESTIC_WARN && d.remainDue>=0);
-  const os30=devs.filter(d=>d.isOversea && !d.isSent && d.remainDue!=null && d.remainDue<=CONFIG.OVERSEA_WARN && d.remainDue>=0);
+  const counts={expired:0,dueSoon:0,sent:0,normal:0};
+  devs.forEach(d=>counts[kpiBucket(d)]++);
   const cards=[
-    {cls:'accent-blue',   icon:'📦', label:'有效设备总数', val:total, hint:'Active 状态设备'},
-    {cls:'accent-gray',   icon:'🗓️', label:'待送出校准', val:pending.length, hint:'未到期 · 无 Send Date'},
-    {cls:'accent-purple', icon:'🚚', label:'已送检待返回', val:sent.length, hint:'有 Send Date · 已过期未返回'},
-    {cls:'accent-red',    icon:'⚠️', label:'已过期高风险', val:expired.length, hint:'已过 Due · 仍未送出'},
-    {cls:'accent-orange', icon:'⏰', label:'国内≤'+CONFIG.DOMESTIC_WARN+'天预警', val:dom7.length, hint:'尽快安排送出'},
-    {cls:'accent-orange2',icon:'🌐', label:'海外≤'+CONFIG.OVERSEA_WARN+'天预警', val:os30.length, hint:'需提前1个月准备'},
+    {cls:'accent-red',icon:'立即处理',label:'已超期设备',val:counts.expired,hint:'立即停用并安排送检'},
+    {cls:'accent-orange',icon:'近期计划',label:'30 天内临期',val:counts.dueSoon,hint:'安排近期送检计划'},
+    {cls:'accent-blue',icon:'进度追踪',label:'送校中设备',val:counts.sent,hint:'已送出且仍未返回'},
+    {cls:'accent-green',icon:'状态正常',label:'正常运行设备',val:counts.normal,hint:`安全运行 · 总计 ${total} 台`},
   ];
   document.getElementById('cards').innerHTML = cards.map(c=>`
     <div class="card ${c.cls}">
@@ -828,7 +919,7 @@ function renderSent(){
   const body=rows.map(d=>`<tr>
     <td>${esc(d.id||'—')}</td><td>${esc(d.sn||'—')}</td><td>${esc(d.model||'—')}</td><td>${esc(d.manufacture||'—')}</td>
     <td>${esc(d.description||'—')}</td><td>${fmt(d.externalDue)}</td><td>${fmt(d.send)}</td>
-    <td><b>${d.daysN}</b> 天</td><td>${fmt(d.due)}</td>
+    <td><b class="${d.daysN>15?'days red':''}">${d.daysN}</b> 天${d.daysN>15?'<span class="lag-badge">进度滞后，建议催办</span>':''}</td><td>${fmt(d.due)}</td>
     <td>${d.overdueDays!=null?`<span style="color:#e5484d;font-weight:600">逾期 ${d.overdueDays} 天</span>`:'—'}</td>
     <td>${d.isOversea?'<span class="tag purple">海外</span>':'<span class="tag blue">国内</span>'}</td>
   </tr>`).join('') || '<tr><td colspan="11" class="empty">无数据</td></tr>';
@@ -891,6 +982,7 @@ function getAllView(){
 const ALL_COLS=[['id','ID'],['sn','SN'],['model','型号'],['manufacture','厂商'],['description','描述'],['calVendor','Cal Vendor'],['externalDue','外送Due'],
   ['due','到期日'],['sendDate','送出日期'],['scope','类型'],['status','状态']];
 function statusTag(d){
+  if(d.needsReview) return '<span class="tag yellow">数据待核实</span>';
   if(d.status==='expired') return '<span class="tag red">已过期</span>';
   if(d.status==='sent') return '<span class="tag blue">已送检</span>';
   if(d.status==='returned') return '<span class="tag green-2">已返回</span>';
@@ -913,16 +1005,31 @@ function renderAll(){
 
 /* ---------- 可视化 ---------- */
 function renderCharts(devs){
-  const statusCnt={expired:0,sent:0,pending:0,returned:0};
-  devs.forEach(d=>statusCnt[d.status]++);
+  if(typeof echarts==='undefined'){
+    ['chartStatus','chartScope','chartDue'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.innerHTML='<div class="empty">图表组件加载失败，请检查网络连接</div>';
+    });
+    return;
+  }
+  const statusCnt={expired:0,dueSoon:0,sent:0,normal:0};
+  devs.forEach(d=>statusCnt[kpiBucket(d)]++);
   const dom=devs.filter(d=>!d.isOversea).length;
   const os=devs.filter(d=>d.isOversea).length;
+  const monKeys=[];
   const dueMon={};
-  devs.forEach(d=>{ if(d.due){ const k=`${d.due.getFullYear()}-${String(d.due.getMonth()+1).padStart(2,'0')}`; dueMon[k]=(dueMon[k]||0)+1; }});
-  const monKeys=Object.keys(dueMon).sort();
+  for(let i=0;i<12;i++){
+    const month=new Date(TODAY.getFullYear(),TODAY.getMonth()+i,1);
+    const key=`${month.getFullYear()}-${String(month.getMonth()+1).padStart(2,'0')}`;
+    monKeys.push(key); dueMon[key]=0;
+  }
+  devs.forEach(d=>{
+    if(!d.due) return;
+    const key=`${d.due.getFullYear()}-${String(d.due.getMonth()+1).padStart(2,'0')}`;
+    if(Object.prototype.hasOwnProperty.call(dueMon,key)) dueMon[key]++;
+  });
 
   drawPie('chartStatus', '设备状态分布',
-    [['已过期',statusCnt.expired,C.red],['已送检',statusCnt.sent,C.blue],['待送出',statusCnt.pending,C.green],['已返回',statusCnt.returned,C.green2]]);
+    [['已超期',statusCnt.expired,'#b91c1c'],['30天内临期',statusCnt.dueSoon,'#d97706'],['送校中',statusCnt.sent,'#2563eb'],['正常运行',statusCnt.normal,'#16a34a']]);
   drawPie('chartScope', '境内 / 海外',
     [['国内',dom,C.blue],['海外',os,C.purple]]);
   const el=document.getElementById('chartDue');
@@ -931,7 +1038,7 @@ function renderCharts(devs){
     tooltip:{trigger:'axis'}, grid:{left:40,right:16,top:18,bottom:30},
     xAxis:{type:'category',data:monKeys,axisLabel:{color:C.text2,fontSize:11},axisLine:{lineStyle:{color:C.line}}},
     yAxis:{type:'value',axisLabel:{color:C.text2,fontSize:11},splitLine:{lineStyle:{color:C.line}}},
-    series:[{type:'bar',data:monKeys.map(k=>dueMon[k]),itemStyle:{color:C.blue,borderRadius:[6,6,0,0]}}]
+    series:[{type:'bar',barMaxWidth:28,data:monKeys.map(k=>dueMon[k]),itemStyle:{color:'#2563eb',borderRadius:[5,5,0,0]}}]
   });
 }
 function drawPie(id,title,items){
@@ -940,7 +1047,7 @@ function drawPie(id,title,items){
   charts[id].setOption({
     tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},
     legend:{bottom:0,textStyle:{color:C.text2,fontSize:11},itemWidth:10,itemHeight:10},
-    series:[{type:'pie',radius:['46%','72%'],center:['50%','44%'],
+    series:[{type:'pie',radius:['50%','75%'],center:['50%','44%'],padAngle:2,itemStyle:{borderRadius:5},
       label:{show:true,formatter:'{b}\n{c}',color:C.text,fontSize:11},
       data:items.filter(i=>i[1]>0).map(i=>({name:i[0],value:i[1],itemStyle:{color:i[2]}}))
     }]
